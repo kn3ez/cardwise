@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CardWise — Credit Card Benefits Optimizer</title>
+  <meta name="description" content="Maximize credit card rewards. Track perks, optimize spending, and never miss a benefit expiration.">
+  <meta name="theme-color" content="#0a0908">
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💳</text></svg>">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Lava Lamp Background -->
+  <div class="lava-bg" aria-hidden="true">
+    <div class="lava-blob"></div>
+    <div class="lava-blob"></div>
+    <div class="lava-blob"></div>
+    <div class="lava-blob"></div>
+  </div>
+
+  <!-- App Container -->
+  <div class="app-container">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">💳</div>
+        <h1>CardWise</h1>
+      </div>
+      <nav>
+        <ul class="nav-links">
+          <li><a href="#dashboard" class="active" data-section="dashboard">Dashboard</a></li>
+          <li><a href="#wallet" data-section="wallet">My Wallet</a></li>
+          <li><a href="#optimizer" data-section="optimizer">Optimizer</a></li>
+          <li><a href="#benefits" data-section="benefits">Benefits</a></li>
+          <li><a href="#browser" data-section="browser">Browse Cards</a></li>
+          <li><a href="#calendar" data-section="calendar">Calendar</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <!-- Dashboard Section -->
+    <section id="dashboard" class="section fade-in">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title"><span class="icon">📊</span> Dashboard</h2>
+          <p class="section-subtitle">Your credit card portfolio at a glance</p>
+        </div>
+      </div>
+
+      <div class="dashboard-grid" id="dashboardGrid">
+        <div class="stat-card">
+          <div class="stat-icon">💰</div>
+          <div class="stat-label">Total Annual Fees</div>
+          <div class="stat-value" id="totalFees">$0</div>
+          <div class="stat-detail" id="totalFeesDetail">0 cards in wallet</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">✨</div>
+          <div class="stat-label">Total Perk Value</div>
+          <div class="stat-value gold" id="totalPerkValue">$0</div>
+          <div class="stat-detail" id="totalPerkDetail">0 perks tracked</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📈</div>
+          <div class="stat-label">Net Value</div>
+          <div class="stat-value positive" id="netValue">$0</div>
+          <div class="stat-detail">Perks minus fees</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">⚡</div>
+          <div class="stat-label">Unused Perks</div>
+          <div class="stat-value" id="unusedPerks">0</div>
+          <div class="stat-detail" id="unusedPerksDetail">Worth $0 unclaimed</div>
+        </div>
+      </div>
+
+      <div class="alerts-container" id="alertsContainer">
+        <!-- Alerts injected by JS -->
+      </div>
+    </section>
+
+    <!-- My Wallet Section -->
+    <section id="wallet" class="section fade-in">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title"><span class="icon">👛</span> My Wallet</h2>
+          <p class="section-subtitle">Your cards — tap to see details, hover to remove</p>
+        </div>
+      </div>
+
+      <div class="wallet-scroll" id="walletScroll">
+        <!-- Cards injected by JS -->
+      </div>
+    </section>
+
+    <!-- Spending Optimizer Section -->
+    <section id="optimizer" class="section fade-in">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title"><span class="icon">🎯</span> Spending Optimizer</h2>
+          <p class="section-subtitle">The best card for every category</p>
+        </div>
+      </div>
+
+      <div class="optimizer-search">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" id="optimizerSearch" placeholder="Search a category or merchant...">
+        </div>
+      </div>
+
+      <div class="optimizer-grid" id="optimizerGrid">
+        <!-- Category cards injected by JS -->
+      </div>
+    </section>
+
+    <!-- Benefits Tracker Section -->
+    <section id="benefits" class="section fade-in">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title"><span class="icon">🎁</span> Benefits Tracker</h2>
+          <p class="section-subtitle">Track and use every perk — don't leave money on the table</p>
+        </div>
+        <div class="benefits-actions">
+          <button class="btn btn-secondary btn-sm" id="expandAllBtn">Expand All</button>
+          <button class="btn btn-secondary btn-sm" id="resetPerksBtn">Reset All</button>
+        </div>
+      </div>
+
+      <div class="benefits-list" id="benefitsList">
+        <!-- Benefit sections injected by JS -->
+      </div>
+    </section>
+
+    <!-- Card Browser Section -->
+    <section id="browser" class="section fade-in">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title"><span class="icon">🔎</span> Browse Cards</h2>
+          <p class="section-subtitle">Explore all cards and add them to your wallet</p>
+        </div>
+      </div>
+
+      <div class="optimizer-search" style="margin-bottom: 16px;">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" id="browserSearch" placeholder="Search cards by name or issuer...">
+        </div>
+      </div>
+
+      <div class="browser-filters" id="browserFilters">
+        <button class="filter-btn active" data-filter="all">All Cards</button>
+        <button class="filter-btn" data-filter="Chase">Chase</button>
+        <button class="filter-btn" data-filter="American Express">Amex</button>
+        <button class="filter-btn" data-filter="Capital One">Capital One</button>
+        <button class="filter-btn" data-filter="Citi">Citi</button>
+        <button class="filter-btn" data-filter="no-fee">No Annual Fee</button>
+      </div>
+
+      <div class="card-browser-grid" id="browserGrid">
+        <!-- Browser cards injected by JS -->
+      </div>
+    </section>
+
+    <!-- Calendar Export Section -->
+    <section id="calendar" class="section fade-in">
+      <div class="section-header" style="justify-content: center;">
+        <div style="text-align: center;">
+          <h2 class="section-title" style="justify-content: center;"><span class="icon">📅</span> Calendar Export</h2>
+          <p class="section-subtitle">Never miss a perk expiration</p>
+        </div>
+      </div>
+
+      <div class="calendar-section">
+        <p class="calendar-info">
+          Download an <strong>.ics calendar file</strong> with reminders for all your perk expirations.
+          You'll get alerts <strong>1 week before</strong> and <strong>the day of</strong> each deadline.
+        </p>
+        <button class="btn btn-primary" id="downloadCalendarBtn" style="font-size: 1rem; padding: 14px 32px;">
+          📅 Download .ics Calendar
+        </button>
+
+        <div class="calendar-preview" id="calendarPreview">
+          <!-- Preview events injected by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Built by <a href="https://neez.me" target="_blank" rel="noopener">Neez</a> · CardWise © 2025</p>
+    </footer>
+
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="js/cards.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
