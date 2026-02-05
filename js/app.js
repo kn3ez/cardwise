@@ -1,5 +1,6 @@
 // CardWise — Main Application Logic
 // Vanilla JS, localStorage persistence, .ics export
+// Redesigned with Advisor, Searchable Card Selector, Wallet Tags
 
 (function() {
   'use strict';
@@ -14,9 +15,9 @@
   };
 
   let state = {
-    wallet: [],        // array of card IDs in wallet
-    perksUsed: {},     // { perkId: true/false }
-    expanded: {}       // { cardId: true/false } for benefit sections
+    wallet: [],
+    perksUsed: {},
+    expanded: {}
   };
 
   function loadState() {
@@ -58,20 +59,19 @@
       state.wallet.push(cardId);
       saveState();
       renderAll();
-      showToast('✅', `Card added to wallet`);
+      showToast('✅', 'Card added to wallet');
     }
   }
 
   function removeFromWallet(cardId) {
     state.wallet = state.wallet.filter(id => id !== cardId);
-    // Clean up perks for removed card
     const card = CARDS_DB.find(c => c.id === cardId);
     if (card) {
       card.perks.forEach(p => { delete state.perksUsed[p.id]; });
     }
     saveState();
     renderAll();
-    showToast('🗑️', `Card removed from wallet`);
+    showToast('🗑️', 'Card removed from wallet');
   }
 
   function togglePerk(perkId) {
@@ -110,17 +110,194 @@
   }
 
   // ==========================================
+  //  Merchant → Category Mapping
+  // ==========================================
+  const MERCHANT_MAP = {
+    'amazon': 'online_shopping', 'target': 'online_shopping', 'ebay': 'online_shopping',
+    'etsy': 'online_shopping', 'best buy': 'online_shopping', 'bestbuy': 'online_shopping',
+    'walmart': 'groceries', 'costco': 'groceries', 'trader joe': 'groceries',
+    'whole foods': 'groceries', 'aldi': 'groceries', 'kroger': 'groceries',
+    'safeway': 'groceries', 'publix': 'groceries', 'wegmans': 'groceries',
+    'sprouts': 'groceries', 'heb': 'groceries', 'h-e-b': 'groceries',
+    'uber eats': 'dining', 'doordash': 'dining', 'grubhub': 'dining',
+    'chipotle': 'dining', 'starbucks': 'dining', 'mcdonald': 'dining',
+    'chick-fil-a': 'dining', 'panera': 'dining', 'sweetgreen': 'dining',
+    'cheesecake factory': 'dining', 'olive garden': 'dining', 'sushi': 'dining',
+    'pizza': 'dining', 'burger': 'dining', 'taco': 'dining', 'ramen': 'dining',
+    'brunch': 'dining', 'dinner': 'dining', 'lunch': 'dining', 'restaurant': 'dining',
+    'bar': 'dining', 'cafe': 'dining', 'coffee': 'dining',
+    'netflix': 'streaming', 'spotify': 'streaming', 'hulu': 'streaming',
+    'disney': 'streaming', 'hbo': 'streaming', 'apple tv': 'streaming',
+    'peacock': 'streaming', 'paramount': 'streaming', 'youtube': 'streaming',
+    'audible': 'streaming', 'apple music': 'streaming', 'max': 'streaming',
+    'delta': 'flights', 'united': 'flights', 'american airlines': 'flights',
+    'southwest': 'flights', 'jetblue': 'flights', 'frontier': 'flights',
+    'spirit': 'flights', 'alaska airlines': 'flights', 'airline': 'flights',
+    'plane': 'flights', 'flight': 'flights',
+    'hilton': 'hotels', 'marriott': 'hotels', 'hyatt': 'hotels',
+    'airbnb': 'hotels', 'hotel': 'hotels', 'vrbo': 'hotels',
+    'motel': 'hotels', 'resort': 'hotels', 'ihg': 'hotels',
+    'shell': 'gas', 'exxon': 'gas', 'bp': 'gas', 'chevron': 'gas',
+    'mobil': 'gas', 'texaco': 'gas', 'sunoco': 'gas', 'fuel': 'gas',
+    'lyft': 'transit', 'uber': 'transit', 'metro': 'transit',
+    'subway': 'transit', 'bus': 'transit', 'taxi': 'transit', 'train': 'transit',
+    'cvs': 'drugstore', 'walgreens': 'drugstore', 'rite aid': 'drugstore',
+    'pharmacy': 'drugstore', 'drugstore': 'drugstore'
+  };
+
+  function matchCategory(query) {
+    const q = query.toLowerCase().trim();
+    if (!q) return null;
+
+    // Direct category match
+    const directCat = SPENDING_CATEGORIES.find(cat =>
+      cat.name.toLowerCase().includes(q) ||
+      cat.description.toLowerCase().includes(q) ||
+      cat.id.replace('_', ' ').includes(q)
+    );
+    if (directCat) return directCat;
+
+    // Merchant match
+    for (const [merchant, catId] of Object.entries(MERCHANT_MAP)) {
+      if (merchant.includes(q) || q.includes(merchant)) {
+        return SPENDING_CATEGORIES.find(c => c.id === catId);
+      }
+    }
+
+    // Fallback
+    return SPENDING_CATEGORIES.find(c => c.id === 'general');
+  }
+
+  // ==========================================
+  //  ADVISOR — "What Card Should I Use?"
+  // ==========================================
+  let activeAdvisorCat = null;
+
+  // Quick category buttons for the advisor
+  const ADVISOR_QUICK_CATS = [
+    { id: 'dining', label: 'Dinner out', emoji: '🍽️' },
+    { id: 'groceries', label: 'Groceries', emoji: '🛒' },
+    { id: 'gas', label: 'Gas', emoji: '⛽' },
+    { id: 'flights', label: 'Flight', emoji: '✈️' },
+    { id: 'hotels', label: 'Hotel', emoji: '🏨' },
+    { id: 'online_shopping', label: 'Online Shopping', emoji: '🛍️' },
+    { id: 'transit', label: 'Uber / Lyft', emoji: '🚗' },
+    { id: 'streaming', label: 'Streaming', emoji: '📺' },
+    { id: 'drugstore', label: 'Drugstore', emoji: '💊' },
+    { id: 'general', label: 'Other', emoji: '💳' }
+  ];
+
+  function renderAdvisorCategories() {
+    const container = document.getElementById('advisorCategories');
+    container.innerHTML = ADVISOR_QUICK_CATS.map(c => `
+      <button class="advisor-cat-btn ${activeAdvisorCat === c.id ? 'active' : ''}" data-cat-id="${c.id}">
+        <span class="cat-emoji">${c.emoji}</span> ${c.label}
+      </button>
+    `).join('');
+  }
+
+  function renderAdvisorResult(categoryId) {
+    const container = document.getElementById('advisorResult');
+    const walletCards = getWalletCards();
+
+    if (walletCards.length === 0) {
+      container.innerHTML = `
+        <div class="advisor-no-cards">
+          <p>Add cards to your wallet first! <a href="#browser">Browse cards →</a></p>
+        </div>`;
+      return;
+    }
+
+    if (!categoryId) {
+      container.innerHTML = '';
+      return;
+    }
+
+    const cat = SPENDING_CATEGORIES.find(c => c.id === categoryId);
+    if (!cat) { container.innerHTML = ''; return; }
+
+    // Rank cards
+    const ranked = walletCards
+      .map(card => {
+        const catData = card.categoryMap[cat.id];
+        return {
+          card,
+          rate: catData ? catData.rate : 0,
+          label: catData ? catData.label : '1x',
+          portal: catData ? catData.portal : false,
+          note: catData ? catData.note : ''
+        };
+      })
+      .sort((a, b) => b.rate - a.rate);
+
+    const winner = ranked[0];
+    const runnerUp = ranked.length > 1 ? ranked[1] : null;
+
+    let noteHtml = '';
+    if (winner.portal && winner.note) {
+      noteHtml = `<div class="advisor-winner-note"><span class="portal-note">⚠️ ${winner.note}</span></div>`;
+    } else if (winner.note) {
+      noteHtml = `<div class="advisor-winner-note">${winner.note}</div>`;
+    }
+
+    let runnerHtml = '';
+    if (runnerUp && runnerUp.rate > 0) {
+      runnerHtml = `
+        <div class="advisor-runner-up">
+          <span class="advisor-runner-label">Runner up:</span>
+          <span class="advisor-runner-name">${runnerUp.card.issuer} ${runnerUp.card.name}</span>
+          <span class="advisor-runner-rate">${runnerUp.label}</span>
+        </div>`;
+    }
+
+    container.innerHTML = `
+      <div class="advisor-result-card">
+        <div class="advisor-winner">
+          <div class="advisor-winner-trophy">🏆</div>
+          <div>
+            <div class="advisor-winner-label">Recommended</div>
+            <div class="advisor-winner-card">${winner.card.issuer} ${winner.card.name}</div>
+          </div>
+          <div class="advisor-winner-rate">${winner.label}</div>
+        </div>
+        ${noteHtml}
+        ${runnerHtml}
+      </div>`;
+  }
+
+  function handleAdvisorCatClick(catId) {
+    activeAdvisorCat = activeAdvisorCat === catId ? null : catId;
+    // Clear search input when using buttons
+    document.getElementById('advisorSearchInput').value = '';
+    renderAdvisorCategories();
+    renderAdvisorResult(activeAdvisorCat);
+  }
+
+  function handleAdvisorSearch(query) {
+    if (!query.trim()) {
+      activeAdvisorCat = null;
+      renderAdvisorCategories();
+      renderAdvisorResult(null);
+      return;
+    }
+    const cat = matchCategory(query);
+    if (cat) {
+      activeAdvisorCat = cat.id;
+      renderAdvisorCategories();
+      renderAdvisorResult(cat.id);
+    }
+  }
+
+  // ==========================================
   //  Dashboard
   // ==========================================
   function renderDashboard() {
     const walletCards = getWalletCards();
 
-    // Total fees
     const totalFees = walletCards.reduce((sum, c) => sum + c.annualFee, 0);
     document.getElementById('totalFees').textContent = `$${totalFees.toLocaleString()}`;
     document.getElementById('totalFeesDetail').textContent = `${walletCards.length} card${walletCards.length !== 1 ? 's' : ''} in wallet`;
 
-    // Total perk value
     let totalValue = 0;
     let totalPerks = 0;
     let unusedCount = 0;
@@ -152,7 +329,6 @@
     document.getElementById('unusedPerks').textContent = unusedCount;
     document.getElementById('unusedPerksDetail').textContent = `Worth $${unusedValue.toLocaleString()} unclaimed`;
 
-    // Alerts
     renderAlerts(walletCards);
   }
 
@@ -164,39 +340,31 @@
 
     walletCards.forEach(card => {
       card.perks.forEach(perk => {
-        // Monthly perks reminder
         if (perk.frequency === 'monthly' && !state.perksUsed[perk.id]) {
           alerts.push({
-            type: 'warning',
-            icon: '⏰',
+            type: 'warning', icon: '⏰',
             text: `<span class="alert-card-name">${card.issuer} ${card.name}</span> — ${perk.name} resets monthly. Don't forget to use it!`
           });
         }
-        // Annual perks near year end (Q4 reminder)
         if (perk.frequency === 'annual' && !state.perksUsed[perk.id] && perk.value > 50 && currentMonth >= 10) {
           alerts.push({
-            type: 'danger',
-            icon: '🔥',
+            type: 'danger', icon: '🔥',
             text: `<span class="alert-card-name">${card.issuer} ${card.name}</span> — ${perk.name} ($${perk.value}) expires at year end!`
           });
         }
-        // Quarterly perks
         if (perk.frequency === 'quarterly' && !state.perksUsed[perk.id]) {
           alerts.push({
-            type: 'warning',
-            icon: '📋',
+            type: 'warning', icon: '📋',
             text: `<span class="alert-card-name">${card.issuer} ${card.name}</span> — ${perk.name}. Make sure it's activated!`
           });
         }
       });
 
-      // High-fee card with low usage
       const usedPerksCount = card.perks.filter(p => state.perksUsed[p.id] && p.frequency !== 'ongoing').length;
       const trackablePerks = card.perks.filter(p => p.frequency !== 'ongoing' && p.frequency !== 'one-time' && p.value > 0).length;
       if (card.annualFee >= 200 && trackablePerks > 0 && usedPerksCount === 0) {
         alerts.push({
-          type: 'danger',
-          icon: '💸',
+          type: 'danger', icon: '💸',
           text: `<span class="alert-card-name">${card.issuer} ${card.name}</span> — $${card.annualFee}/yr fee but no perks used yet. Start claiming!`
         });
       }
@@ -220,7 +388,6 @@
       return;
     }
 
-    // Show max 5 alerts
     container.innerHTML = alerts.slice(0, 5).map(a => `
       <div class="alert-item ${a.type}">
         <span class="alert-icon">${a.icon}</span>
@@ -280,44 +447,7 @@
         cat.description.toLowerCase().includes(query)
       );
 
-      // Also check common merchant mappings
-      const merchantMap = {
-        'amazon': 'online_shopping',
-        'target': 'online_shopping',
-        'walmart': 'groceries',
-        'costco': 'groceries',
-        'trader joe': 'groceries',
-        'whole foods': 'groceries',
-        'uber eats': 'dining',
-        'doordash': 'dining',
-        'grubhub': 'dining',
-        'chipotle': 'dining',
-        'starbucks': 'dining',
-        'mcdonald': 'dining',
-        'netflix': 'streaming',
-        'spotify': 'streaming',
-        'hulu': 'streaming',
-        'disney': 'streaming',
-        'hbo': 'streaming',
-        'delta': 'flights',
-        'united': 'flights',
-        'american airlines': 'flights',
-        'southwest': 'flights',
-        'hilton': 'hotels',
-        'marriott': 'hotels',
-        'hyatt': 'hotels',
-        'airbnb': 'hotels',
-        'shell': 'gas',
-        'exxon': 'gas',
-        'bp': 'gas',
-        'chevron': 'gas',
-        'lyft': 'transit',
-        'uber': 'transit',
-        'metro': 'transit',
-        'subway': 'transit'
-      };
-
-      for (const [merchant, catId] of Object.entries(merchantMap)) {
+      for (const [merchant, catId] of Object.entries(MERCHANT_MAP)) {
         if (merchant.includes(query) || query.includes(merchant)) {
           const matchedCat = SPENDING_CATEGORIES.find(c => c.id === catId);
           if (matchedCat && !categories.find(c => c.id === matchedCat.id)) {
@@ -327,13 +457,11 @@
       }
 
       if (categories.length === 0) {
-        // Show general if no match
         categories = [SPENDING_CATEGORIES.find(c => c.id === 'general')];
       }
     }
 
     container.innerHTML = categories.map(cat => {
-      // Find best card for this category
       const ranked = walletCards
         .map(card => {
           const catData = card.categoryMap[cat.id];
@@ -349,7 +477,7 @@
       const others = ranked.slice(1);
 
       return `
-        <div class="optimizer-card accent-glow">
+        <div class="optimizer-card">
           <div class="category-header">
             <span class="category-icon">${cat.icon}</span>
             <div>
@@ -465,24 +593,21 @@
   }
 
   // ==========================================
-  //  Card Browser
+  //  Card Browser — Searchable Dropdown + Wallet Tags
   // ==========================================
   let browserFilter = 'all';
   let browserSearchQuery = '';
+  let dropdownOpen = false;
 
-  function renderBrowser() {
-    const container = document.getElementById('browserGrid');
-
+  function getFilteredCards() {
     let cards = [...CARDS_DB];
 
-    // Apply filter
     if (browserFilter === 'no-fee') {
       cards = cards.filter(c => c.annualFee === 0);
     } else if (browserFilter !== 'all') {
       cards = cards.filter(c => c.issuer === browserFilter);
     }
 
-    // Apply search
     if (browserSearchQuery) {
       const q = browserSearchQuery.toLowerCase();
       cards = cards.filter(c =>
@@ -492,37 +617,64 @@
       );
     }
 
-    if (cards.length === 0) {
-      container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 48px; color: var(--text-muted);">No cards match your search.</div>`;
+    return cards;
+  }
+
+  function renderBrowserDropdown() {
+    const dropdown = document.getElementById('cardSelectorDropdown');
+    const cards = getFilteredCards();
+
+    if (!dropdownOpen) {
+      dropdown.classList.remove('open');
       return;
     }
 
-    container.innerHTML = cards.map(card => {
-      const inWallet = isInWallet(card.id);
-      // Get top earning rates for chips
-      const topRates = card.earningRates.slice(0, 3);
+    dropdown.classList.add('open');
 
+    if (cards.length === 0) {
+      dropdown.innerHTML = `<div class="dropdown-empty">No cards match your search.</div>`;
+      return;
+    }
+
+    dropdown.innerHTML = cards.map(card => {
+      const inWallet = isInWallet(card.id);
       return `
-        <div class="browser-card ${inWallet ? 'in-wallet' : ''}">
-          <div class="browser-card-top">
-            <div class="browser-card-swatch" style="background: ${card.gradient};"></div>
-            <div>
-              <div class="browser-card-title">${card.name}</div>
-              <div class="browser-card-issuer">${card.issuer}</div>
-              <div class="browser-card-fee">${card.annualFee === 0 ? 'No Annual Fee' : '$' + card.annualFee + '/year'}</div>
-            </div>
+        <div class="dropdown-item">
+          <div class="dropdown-item-swatch" style="background: ${card.gradient};"></div>
+          <div class="dropdown-item-info">
+            <div class="dropdown-item-name">${card.issuer} ${card.name}</div>
+            <div class="dropdown-item-meta">${card.annualFee === 0 ? 'No annual fee' : '$' + card.annualFee + '/yr'} · ${card.network}</div>
           </div>
-          <div class="browser-card-rates">
-            ${topRates.map((r, i) => `
-              <span class="rate-chip ${i === 0 ? 'highlight' : ''}">${r.rate}${r.unit} ${r.category}</span>
-            `).join('')}
-          </div>
-          <button class="browser-card-action ${inWallet ? 'remove' : 'add'}" 
+          ${inWallet ? '<span class="dropdown-item-check">✅</span>' : ''}
+          <button class="dropdown-item-action ${inWallet ? 'remove-btn' : 'add-btn'}" 
                   onclick="CardWise.${inWallet ? 'removeFromWallet' : 'addToWallet'}('${card.id}')">
-            ${inWallet ? '✕ Remove from Wallet' : '+ Add to Wallet'}
+            ${inWallet ? 'Remove' : '+ Add'}
           </button>
         </div>`;
     }).join('');
+  }
+
+  function renderWalletTags() {
+    const container = document.getElementById('walletTags');
+    const walletCards = getWalletCards();
+
+    if (walletCards.length === 0) {
+      container.innerHTML = `<span class="wallet-tags-empty">No cards yet — search above to add some.</span>`;
+      return;
+    }
+
+    container.innerHTML = walletCards.map(card => `
+      <span class="wallet-tag">
+        <span class="tag-swatch" style="background: ${card.gradient};"></span>
+        ${card.issuer} ${card.name}
+        <span class="tag-remove" onclick="CardWise.removeFromWallet('${card.id}')" title="Remove">✕</span>
+      </span>
+    `).join('');
+  }
+
+  function renderBrowser() {
+    renderBrowserDropdown();
+    renderWalletTags();
   }
 
   // ==========================================
@@ -572,24 +724,21 @@
     const year = now.getFullYear() + yearOffset;
 
     if (perk.frequency === 'monthly') {
-      // End of current month
       const month = now.getMonth();
       const lastDay = new Date(year, month + 1, 0).getDate();
       return new Date(year, month, lastDay);
     }
 
     if (perk.frequency === 'quarterly') {
-      // End of current quarter
       const quarter = Math.floor(now.getMonth() / 3);
-      const quarterEnd = new Date(year, (quarter + 1) * 3, 0);
-      return quarterEnd;
+      return new Date(year, (quarter + 1) * 3, 0);
     }
 
     if (perk.frequency === 'annual') {
       if (perk.renewalMonth) {
-        return new Date(year, perk.renewalMonth - 1 + 12, 0); // End of year from renewal
+        return new Date(year, perk.renewalMonth - 1 + 12, 0);
       }
-      return new Date(year, 11, 31); // Dec 31
+      return new Date(year, 11, 31);
     }
 
     return null;
@@ -624,7 +773,6 @@
         const title = `⚠️ Use ${card.issuer} ${card.name} ${perk.name}`;
         const desc = `${perk.name} worth $${perk.value} from your ${card.issuer} ${card.name} card. ${perk.description}`;
 
-        // Week before reminder
         if (weekBefore > now) {
           events.push({
             id: `${perk.id}-week`,
@@ -636,7 +784,6 @@
           });
         }
 
-        // Day of
         events.push({
           id: `${perk.id}-day`,
           title: `🚨 LAST DAY: ${title}`,
@@ -648,7 +795,6 @@
       });
     });
 
-    // Sort by date
     events.sort((a, b) => a.date - b.date);
     return events;
   }
@@ -733,7 +879,6 @@
       return;
     }
 
-    // Show first 6 upcoming events
     const preview = events.slice(0, 6);
     container.innerHTML = `
       <p class="text-muted" style="margin-bottom: 16px; font-size: 0.85rem;">${events.length} total events will be exported</p>
@@ -754,9 +899,8 @@
   // ==========================================
   function setupNavigation() {
     const links = document.querySelectorAll('.nav-links a');
-
-    // Intersection observer for active nav
     const sections = document.querySelectorAll('.section');
+
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -770,7 +914,6 @@
 
     sections.forEach(s => observer.observe(s));
 
-    // Fade in on scroll
     const fadeObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
@@ -791,19 +934,51 @@
       renderOptimizer(e.target.value);
     });
 
-    // Browser search
-    document.getElementById('browserSearch').addEventListener('input', (e) => {
-      browserSearchQuery = e.target.value;
-      renderBrowser();
+    // Advisor search
+    document.getElementById('advisorSearchInput').addEventListener('input', (e) => {
+      handleAdvisorSearch(e.target.value);
     });
 
-    // Browser filters
+    // Advisor category buttons
+    document.getElementById('advisorCategories').addEventListener('click', (e) => {
+      const btn = e.target.closest('.advisor-cat-btn');
+      if (btn) {
+        handleAdvisorCatClick(btn.dataset.catId);
+      }
+    });
+
+    // Card selector input — show dropdown on focus/input
+    const selectorInput = document.getElementById('cardSelectorInput');
+    const selectorDropdown = document.getElementById('cardSelectorDropdown');
+
+    selectorInput.addEventListener('focus', () => {
+      dropdownOpen = true;
+      renderBrowserDropdown();
+    });
+
+    selectorInput.addEventListener('input', (e) => {
+      browserSearchQuery = e.target.value;
+      dropdownOpen = true;
+      renderBrowserDropdown();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.card-selector-wrap')) {
+        dropdownOpen = false;
+        selectorDropdown.classList.remove('open');
+      }
+    });
+
+    // Browser filter chips
     document.getElementById('browserFilters').addEventListener('click', (e) => {
       if (e.target.classList.contains('filter-btn')) {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('#browserFilters .filter-btn').forEach(b => b.classList.remove('active'));
         e.target.classList.add('active');
         browserFilter = e.target.dataset.filter;
-        renderBrowser();
+        dropdownOpen = true;
+        selectorInput.focus();
+        renderBrowserDropdown();
       }
     });
 
@@ -832,6 +1007,8 @@
   //  Render All
   // ==========================================
   function renderAll() {
+    renderAdvisorCategories();
+    renderAdvisorResult(activeAdvisorCat);
     renderDashboard();
     renderWallet();
     renderOptimizer();
@@ -857,7 +1034,6 @@
     togglePerk,
     toggleExpand: (cardId) => {
       toggleExpand(cardId);
-      // Re-render just the section
       const section = document.querySelector(`.benefit-card-section[data-card-id="${cardId}"]`);
       if (section) {
         section.classList.toggle('expanded');
@@ -867,7 +1043,6 @@
     resetAllPerks
   };
 
-  // Run on DOM ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

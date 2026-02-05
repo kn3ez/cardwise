@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CardWise — Credit Card Benefits Optimizer</title>
   <meta name="description" content="Maximize credit card rewards. Track perks, optimize spending, and never miss a benefit expiration.">
-  <meta name="theme-color" content="#0a0908">
+  <meta name="theme-color" content="#0f172a">
 
   <!-- Favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💳</text></svg>">
@@ -13,20 +13,16 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <!-- Styles -->
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-  <!-- Lava Lamp Background -->
-  <div class="lava-bg" aria-hidden="true">
-    <div class="lava-blob"></div>
-    <div class="lava-blob"></div>
-    <div class="lava-blob"></div>
-    <div class="lava-blob"></div>
-  </div>
+  <!-- Grid Background -->
+  <div class="grid-bg" aria-hidden="true"></div>
+  <div class="grid-glow" aria-hidden="true"></div>
 
   <!-- App Container -->
   <div class="app-container">
@@ -39,15 +35,41 @@
       </div>
       <nav>
         <ul class="nav-links">
-          <li><a href="#dashboard" class="active" data-section="dashboard">Dashboard</a></li>
-          <li><a href="#wallet" data-section="wallet">My Wallet</a></li>
+          <li><a href="#advisor" class="active" data-section="advisor">Advisor</a></li>
+          <li><a href="#dashboard" data-section="dashboard">Dashboard</a></li>
+          <li><a href="#wallet" data-section="wallet">Wallet</a></li>
           <li><a href="#optimizer" data-section="optimizer">Optimizer</a></li>
           <li><a href="#benefits" data-section="benefits">Benefits</a></li>
-          <li><a href="#browser" data-section="browser">Browse Cards</a></li>
+          <li><a href="#browser" data-section="browser">Cards</a></li>
           <li><a href="#calendar" data-section="calendar">Calendar</a></li>
         </ul>
       </nav>
     </header>
+
+    <!-- ============================== -->
+    <!-- HERO: What Card Should I Use?  -->
+    <!-- ============================== -->
+    <section id="advisor" class="section fade-in">
+      <div class="advisor-hero">
+        <div class="advisor-header">
+          <h2 class="advisor-title">What card should I use?</h2>
+          <p class="advisor-subtitle">Tap a category or search a merchant — get an instant answer.</p>
+        </div>
+
+        <div class="advisor-search-wrap">
+          <span class="advisor-search-icon">🔍</span>
+          <input type="text" class="advisor-search-input" id="advisorSearchInput" placeholder="Type a merchant… Starbucks, Amazon, Delta…" autocomplete="off">
+        </div>
+
+        <div class="advisor-categories" id="advisorCategories">
+          <!-- Quick category buttons injected by JS -->
+        </div>
+
+        <div class="advisor-result" id="advisorResult">
+          <!-- Result injected by JS -->
+        </div>
+      </div>
+    </section>
 
     <!-- Dashboard Section -->
     <section id="dashboard" class="section fade-in">
@@ -68,7 +90,7 @@
         <div class="stat-card">
           <div class="stat-icon">✨</div>
           <div class="stat-label">Total Perk Value</div>
-          <div class="stat-value gold" id="totalPerkValue">$0</div>
+          <div class="stat-value emerald" id="totalPerkValue">$0</div>
           <div class="stat-detail" id="totalPerkDetail">0 perks tracked</div>
         </div>
         <div class="stat-card">
@@ -148,28 +170,40 @@
       <div class="section-header">
         <div>
           <h2 class="section-title"><span class="icon">🔎</span> Browse Cards</h2>
-          <p class="section-subtitle">Explore all cards and add them to your wallet</p>
+          <p class="section-subtitle">Search and add cards to your wallet</p>
         </div>
       </div>
 
-      <div class="optimizer-search" style="margin-bottom: 16px;">
-        <div class="search-input-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" class="search-input" id="browserSearch" placeholder="Search cards by name or issuer...">
+      <!-- Searchable Card Selector -->
+      <div class="card-selector-wrap">
+        <div class="card-selector-input-wrap">
+          <span class="card-selector-icon">🔍</span>
+          <input type="text" class="card-selector-input" id="cardSelectorInput" placeholder="Search cards by name or issuer..." autocomplete="off">
+        </div>
+        <div class="card-selector-dropdown" id="cardSelectorDropdown">
+          <!-- Dropdown items injected by JS -->
         </div>
       </div>
 
+      <!-- Issuer Filter Chips -->
       <div class="browser-filters" id="browserFilters">
-        <button class="filter-btn active" data-filter="all">All Cards</button>
+        <button class="filter-btn active" data-filter="all">All</button>
         <button class="filter-btn" data-filter="Chase">Chase</button>
         <button class="filter-btn" data-filter="American Express">Amex</button>
-        <button class="filter-btn" data-filter="Capital One">Capital One</button>
+        <button class="filter-btn" data-filter="Capital One">Cap One</button>
         <button class="filter-btn" data-filter="Citi">Citi</button>
-        <button class="filter-btn" data-filter="no-fee">No Annual Fee</button>
+        <button class="filter-btn" data-filter="U.S. Bank">US Bank</button>
+        <button class="filter-btn" data-filter="Wells Fargo">Wells Fargo</button>
+        <button class="filter-btn" data-filter="Discover">Discover</button>
+        <button class="filter-btn" data-filter="no-fee">No Fee</button>
       </div>
 
-      <div class="card-browser-grid" id="browserGrid">
-        <!-- Browser cards injected by JS -->
+      <!-- Wallet Tags -->
+      <div class="wallet-tags-section" id="walletTagsSection">
+        <div class="wallet-tags-label">Your wallet:</div>
+        <div class="wallet-tags" id="walletTags">
+          <!-- Tags injected by JS -->
+        </div>
       </div>
     </section>
 
