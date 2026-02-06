@@ -325,55 +325,114 @@
   }
 
   // ==========================================
-  //  Dashboard Stats
+  //  Perk Period Helpers
+  // ==========================================
+  
+  // Get number of periods for a frequency type
+  function getPeriodsForFrequency(freq) {
+    switch (freq) {
+      case 'monthly': return 12;
+      case 'quarterly': return 4;
+      case 'semiannual': return 2;
+      case 'annual': return 1;
+      default: return 0;
+    }
+  }
+
+  // Get period labels
+  function getPeriodLabels(freq) {
+    switch (freq) {
+      case 'monthly': return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      case 'quarterly': return ['Q1', 'Q2', 'Q3', 'Q4'];
+      case 'semiannual': return ['H1', 'H2'];
+      case 'annual': return ['Year'];
+      default: return [];
+    }
+  }
+
+  // Check if a specific period is used
+  function isPeriodUsed(perkId, period) {
+    const perkState = state.perksUsed[perkId];
+    if (!perkState) return false;
+    if (typeof perkState === 'boolean') return perkState;
+    return perkState[period] === true;
+  }
+
+  // Toggle a specific period
+  function togglePerkPeriod(perkId, period, totalPeriods) {
+    if (!state.perksUsed[perkId] || typeof state.perksUsed[perkId] === 'boolean') {
+      state.perksUsed[perkId] = {};
+    }
+    state.perksUsed[perkId][period] = !state.perksUsed[perkId][period];
+    saveState();
+    renderBenefits();
+    renderDashboard();
+  }
+
+  // Count used periods for a perk
+  function countUsedPeriods(perkId, totalPeriods) {
+    const perkState = state.perksUsed[perkId];
+    if (!perkState) return 0;
+    if (typeof perkState === 'boolean') return perkState ? totalPeriods : 0;
+    return Object.values(perkState).filter(v => v === true).length;
+  }
+
+  // Calculate used value considering periods
+  function calculateUsedValue(perk) {
+    const periods = getPeriodsForFrequency(perk.frequency);
+    if (periods === 0) return 0;
+    const usedPeriods = countUsedPeriods(perk.id, periods);
+    const valuePerPeriod = perk.value / periods;
+    return usedPeriods * valuePerPeriod;
+  }
+
+  // ==========================================
+  //  Dashboard Stats (My Cards page only)
   // ==========================================
   function renderDashboard() {
     const walletCards = getWalletCards();
 
     const totalFees = walletCards.reduce((sum, c) => sum + c.annualFee, 0);
     let totalValue = 0;
-    let unusedCount = 0;
-    let unusedValue = 0;
+    let usedValue = 0;
 
     walletCards.forEach(card => {
       card.perks.forEach(perk => {
         if (perk.value > 0) {
           totalValue += perk.value;
-          if (perk.frequency !== 'ongoing' && perk.frequency !== 'one-time' && !state.perksUsed[perk.id]) {
-            unusedCount++;
-            unusedValue += perk.value;
-          }
+          usedValue += calculateUsedValue(perk);
         }
       });
     });
 
     const net = totalValue - totalFees;
+    const unusedValue = totalValue - usedValue;
 
     const container = document.getElementById('dashboardCards');
     container.innerHTML = `
       <div class="stat-card">
-        <div class="stat-icon">💰</div>
-        <div class="stat-label">Annual Fees</div>
-        <div class="stat-value">$${totalFees.toLocaleString()}</div>
-        <div class="stat-detail">${walletCards.length} card${walletCards.length !== 1 ? 's' : ''}</div>
+        <div class="stat-icon">💳</div>
+        <div class="stat-label">Cards</div>
+        <div class="stat-value">${walletCards.length}</div>
+        <div class="stat-detail">$${totalFees.toLocaleString()} in fees</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">✨</div>
         <div class="stat-label">Perk Value</div>
         <div class="stat-value">$${totalValue.toLocaleString()}</div>
-        <div class="stat-detail">Total benefits</div>
+        <div class="stat-detail">Total annual benefits</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-label">Used</div>
+        <div class="stat-value">$${Math.round(usedValue).toLocaleString()}</div>
+        <div class="stat-detail">${Math.round((usedValue / totalValue || 0) * 100)}% claimed</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">📈</div>
         <div class="stat-label">Net Value</div>
         <div class="stat-value ${net >= 0 ? 'positive' : 'negative'}">${net >= 0 ? '+' : ''}$${Math.abs(net).toLocaleString()}</div>
         <div class="stat-detail">Perks − fees</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">⚡</div>
-        <div class="stat-label">Unused Perks</div>
-        <div class="stat-value">${unusedCount}</div>
-        <div class="stat-detail">$${unusedValue.toLocaleString()} unclaimed</div>
       </div>
     `;
 
@@ -541,103 +600,8 @@
   // ==========================================
   //  Benefits Page
   // ==========================================
-  
-  // Get number of periods for a frequency type
-  function getPeriodsForFrequency(freq) {
-    switch (freq) {
-      case 'monthly': return 12;
-      case 'quarterly': return 4;
-      case 'semiannual': return 2;
-      case 'annual': return 1;
-      default: return 0;
-    }
-  }
-
-  // Get period labels
-  function getPeriodLabels(freq) {
-    switch (freq) {
-      case 'monthly': return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      case 'quarterly': return ['Q1', 'Q2', 'Q3', 'Q4'];
-      case 'semiannual': return ['H1', 'H2'];
-      case 'annual': return ['Year'];
-      default: return [];
-    }
-  }
-
-  // Check if a specific period is used
-  function isPeriodUsed(perkId, period) {
-    const perkState = state.perksUsed[perkId];
-    if (!perkState) return false;
-    if (typeof perkState === 'boolean') return perkState; // Legacy single checkbox
-    return perkState[period] === true;
-  }
-
-  // Toggle a specific period
-  function togglePerkPeriod(perkId, period, totalPeriods) {
-    if (!state.perksUsed[perkId] || typeof state.perksUsed[perkId] === 'boolean') {
-      // Initialize as object
-      state.perksUsed[perkId] = {};
-    }
-    state.perksUsed[perkId][period] = !state.perksUsed[perkId][period];
-    saveState();
-    renderBenefits();
-    renderDashboard();
-  }
-
-  // Count used periods for a perk
-  function countUsedPeriods(perkId, totalPeriods) {
-    const perkState = state.perksUsed[perkId];
-    if (!perkState) return 0;
-    if (typeof perkState === 'boolean') return perkState ? totalPeriods : 0;
-    return Object.values(perkState).filter(v => v === true).length;
-  }
-
-  // Calculate used value considering periods
-  function calculateUsedValue(perk) {
-    const periods = getPeriodsForFrequency(perk.frequency);
-    if (periods === 0) return 0;
-    const usedPeriods = countUsedPeriods(perk.id, periods);
-    const valuePerPeriod = perk.value / periods;
-    return usedPeriods * valuePerPeriod;
-  }
-
   function renderBenefits() {
     const walletCards = getWalletCards();
-
-    // Overview - calculate with period-aware values
-    let totalFees = 0;
-    let totalValue = 0;
-    let usedValue = 0;
-
-    walletCards.forEach(card => {
-      totalFees += card.annualFee;
-      card.perks.forEach(perk => {
-        if (perk.value > 0) {
-          totalValue += perk.value;
-          usedValue += calculateUsedValue(perk);
-        }
-      });
-    });
-
-    document.getElementById('benefitsOverview').innerHTML = `
-      <div class="overview-card">
-        <div class="overview-label">Total Perk Value</div>
-        <div class="overview-value success">$${totalValue.toLocaleString()}</div>
-        <div class="overview-detail">Across ${walletCards.length} cards</div>
-      </div>
-      <div class="overview-card">
-        <div class="overview-label">Already Used</div>
-        <div class="overview-value">$${Math.round(usedValue).toLocaleString()}</div>
-        <div class="overview-detail">${Math.round((usedValue / totalValue || 0) * 100)}% claimed</div>
-      </div>
-      <div class="overview-card">
-        <div class="overview-label">Annual Fees</div>
-        <div class="overview-value danger">$${totalFees.toLocaleString()}</div>
-        <div class="overview-detail">Make it count!</div>
-      </div>
-    `;
-
-    // List
     const container = document.getElementById('benefitsList');
 
     if (walletCards.length === 0) {
