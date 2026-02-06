@@ -10,13 +10,15 @@
   const STORAGE_KEYS = {
     wallet: 'cardwise_wallet',
     perks: 'cardwise_perks_used',
-    expanded: 'cardwise_expanded'
+    expanded: 'cardwise_expanded',
+    anniversaries: 'cardwise_anniversaries'
   };
 
   let state = {
     wallet: [],
     perksUsed: {},
-    expanded: {}
+    expanded: {},
+    anniversaries: {} // cardId -> 'MM-DD' format
   };
 
   let currentPage = 'advisor';
@@ -29,14 +31,17 @@
       const w = localStorage.getItem(STORAGE_KEYS.wallet);
       const p = localStorage.getItem(STORAGE_KEYS.perks);
       const e = localStorage.getItem(STORAGE_KEYS.expanded);
+      const a = localStorage.getItem(STORAGE_KEYS.anniversaries);
       state.wallet = w ? JSON.parse(w) : [...DEFAULT_WALLET];
       state.perksUsed = p ? JSON.parse(p) : {};
       state.expanded = e ? JSON.parse(e) : {};
+      state.anniversaries = a ? JSON.parse(a) : {};
     } catch (err) {
       console.warn('Failed to load state:', err);
       state.wallet = [...DEFAULT_WALLET];
       state.perksUsed = {};
       state.expanded = {};
+      state.anniversaries = {};
     }
   }
 
@@ -45,9 +50,26 @@
       localStorage.setItem(STORAGE_KEYS.wallet, JSON.stringify(state.wallet));
       localStorage.setItem(STORAGE_KEYS.perks, JSON.stringify(state.perksUsed));
       localStorage.setItem(STORAGE_KEYS.expanded, JSON.stringify(state.expanded));
+      localStorage.setItem(STORAGE_KEYS.anniversaries, JSON.stringify(state.anniversaries));
     } catch (err) {
       console.warn('Failed to save state:', err);
     }
+  }
+
+  function setAnniversary(cardId, date) {
+    if (date) {
+      state.anniversaries[cardId] = date; // 'MM-DD' format
+    } else {
+      delete state.anniversaries[cardId];
+    }
+    saveState();
+    renderCardsPage();
+    renderCalendar();
+    showToast('✓', 'Anniversary date saved');
+  }
+
+  function getAnniversary(cardId) {
+    return state.anniversaries[cardId] || null;
   }
 
   function getWalletCards() {
@@ -378,16 +400,89 @@
       return;
     }
 
-    container.innerHTML = walletCards.map(card => `
-      <div class="wallet-card">
-        <div class="wallet-card-swatch" style="background: ${card.gradient};"></div>
-        <div class="wallet-card-info">
-          <div class="wallet-card-name">${card.issuer} ${card.name}</div>
-          <div class="wallet-card-meta">${card.annualFee === 0 ? 'No fee' : '$' + card.annualFee + '/yr'} · ${card.perks.length} perks</div>
+    container.innerHTML = walletCards.map(card => {
+      const anniversary = getAnniversary(card.id);
+      const anniversaryDisplay = anniversary ? formatAnniversary(anniversary) : 'Set anniversary';
+      const anniversaryClass = anniversary ? '' : 'not-set';
+      
+      return `
+        <div class="wallet-card" data-card-id="${card.id}">
+          <div class="wallet-card-swatch" style="background: ${card.gradient};"></div>
+          <div class="wallet-card-info">
+            <div class="wallet-card-name">${card.issuer} ${card.name}</div>
+            <div class="wallet-card-meta">${card.annualFee === 0 ? 'No fee' : '$' + card.annualFee + '/yr'} · ${card.perks.length} perks</div>
+            <button class="wallet-card-anniversary ${anniversaryClass}" onclick="CardWise.editAnniversary('${card.id}', event)">
+              📅 ${anniversaryDisplay}
+            </button>
+          </div>
+          <button class="wallet-card-remove" onclick="event.stopPropagation(); CardWise.removeFromWallet('${card.id}')" title="Remove">✕</button>
+        </div>`;
+    }).join('');
+  }
+
+  function formatAnniversary(mmdd) {
+    const [month, day] = mmdd.split('-').map(Number);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${monthNames[month - 1]} ${day}`;
+  }
+
+  function editAnniversary(cardId, event) {
+    event.stopPropagation();
+    const card = CARDS_DB.find(c => c.id === cardId);
+    if (!card) return;
+
+    const current = getAnniversary(cardId) || '';
+    
+    // Create modal
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Card Anniversary</h3>
+          <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">✕</button>
         </div>
-        <button class="wallet-card-remove" onclick="CardWise.removeFromWallet('${card.id}')" title="Remove">✕</button>
+        <div class="modal-body">
+          <p class="modal-card-name">${card.issuer} ${card.name}</p>
+          <p class="modal-desc">Set the date your card renews each year. This helps calculate when annual perks expire.</p>
+          <div class="date-picker">
+            <select id="anniversaryMonth" class="date-select">
+              <option value="">Month</option>
+              ${['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+                .map((m, i) => `<option value="${String(i + 1).padStart(2, '0')}" ${current.startsWith(String(i + 1).padStart(2, '0')) ? 'selected' : ''}>${m}</option>`)
+                .join('')}
+            </select>
+            <select id="anniversaryDay" class="date-select">
+              <option value="">Day</option>
+              ${Array.from({length: 31}, (_, i) => i + 1)
+                .map(d => `<option value="${String(d).padStart(2, '0')}" ${current.endsWith('-' + String(d).padStart(2, '0')) ? 'selected' : ''}>${d}</option>`)
+                .join('')}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          ${current ? `<button class="btn btn-ghost btn-danger" onclick="CardWise.saveAnniversary('${cardId}', null); this.closest('.modal-overlay').remove();">Clear</button>` : ''}
+          <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+          <button class="btn btn-primary" onclick="CardWise.saveAnniversaryFromModal('${cardId}')">Save</button>
+        </div>
       </div>
-    `).join('');
+    `;
+    document.body.appendChild(modal);
+    
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+  }
+
+  function saveAnniversaryFromModal(cardId) {
+    const month = document.getElementById('anniversaryMonth').value;
+    const day = document.getElementById('anniversaryDay').value;
+    
+    if (month && day) {
+      setAnniversary(cardId, `${month}-${day}`);
+    }
+    document.querySelector('.modal-overlay')?.remove();
   }
 
   function getFilteredCards() {
@@ -628,7 +723,7 @@
       card.perks.forEach(perk => {
         if (perk.frequency === 'ongoing' || perk.frequency === 'one-time' || perk.value === 0) return;
 
-        const expDate = getExpirationDate(perk);
+        const expDate = getExpirationDate(perk, card.id);
         if (!expDate || expDate < now) return;
 
         const weekBefore = new Date(expDate);
@@ -663,7 +758,7 @@
     return events;
   }
 
-  function getExpirationDate(perk) {
+  function getExpirationDate(perk, cardId) {
     const now = new Date();
     const year = now.getFullYear();
 
@@ -675,6 +770,21 @@
       return new Date(year, (quarter + 1) * 3, 0);
     }
     if (perk.frequency === 'annual') {
+      // Use card anniversary if set, otherwise default to end of year
+      const anniversary = getAnniversary(cardId);
+      if (anniversary) {
+        const [month, day] = anniversary.split('-').map(Number);
+        // Anniversary is when card renews, so perks expire the day before
+        let expYear = year;
+        const expDate = new Date(expYear, month - 1, day);
+        expDate.setDate(expDate.getDate() - 1); // Day before renewal
+        
+        // If already passed this year, use next year
+        if (expDate < now) {
+          expDate.setFullYear(expYear + 1);
+        }
+        return expDate;
+      }
       return new Date(year, 11, 31);
     }
     return null;
@@ -830,7 +940,10 @@
     removeFromWallet,
     togglePerk,
     toggleExpand,
-    navigate: navigateTo
+    navigate: navigateTo,
+    editAnniversary,
+    saveAnniversary: setAnniversary,
+    saveAnniversaryFromModal
   };
 
   if (document.readyState === 'loading') {
