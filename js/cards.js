@@ -15,24 +15,47 @@ const SPENDING_CATEGORIES = [
 ];
 
 // Helper to build categoryMap and earningRates array from a simpler input format
+// For portal rates: use baseRate for default, store portalRate separately
 function buildCard(config) {
   const categoryMap = {};
   const earningRatesArr = [];
 
   for (const [catId, info] of Object.entries(config.rates)) {
-    const label = info.unit === 'percent' ? `${info.rate}%` :
-                  info.unit === 'points' ? `${info.rate}x pts` :
-                  info.unit === 'miles' ? `${info.rate}x mi` : `${info.rate}x`;
+    // Use baseRate if this is a portal-boosted category, otherwise use rate
+    const effectiveRate = info.portal && info.baseRate !== undefined ? info.baseRate : info.rate;
+    const label = info.unit === 'percent' ? `${effectiveRate}%` :
+                  info.unit === 'points' ? `${effectiveRate}x pts` :
+                  info.unit === 'miles' ? `${effectiveRate}x mi` : `${effectiveRate}x`;
+    
     // Normalize to comparable value (cents per dollar)
-    const normalized = info.unit === 'percent' ? info.rate :
-                       info.rate * 1.5; // approx cpp for transferable points/miles
-    categoryMap[catId] = { rate: normalized, label, portal: info.portal || false, note: info.note || '' };
+    const normalized = info.unit === 'percent' ? effectiveRate :
+                       effectiveRate * 1.5; // approx cpp for transferable points/miles
+    
+    // Build portal info if applicable
+    let portalInfo = null;
+    if (info.portal) {
+      const portalLabel = info.unit === 'percent' ? `${info.rate}%` :
+                          info.unit === 'points' ? `${info.rate}x pts` :
+                          info.unit === 'miles' ? `${info.rate}x mi` : `${info.rate}x`;
+      portalInfo = {
+        rate: info.unit === 'percent' ? info.rate : info.rate * 1.5,
+        label: portalLabel,
+        note: info.note || ''
+      };
+    }
+    
+    categoryMap[catId] = { 
+      rate: normalized, 
+      label, 
+      portal: portalInfo,
+      note: !info.portal && info.note ? info.note : ''
+    };
 
     const catInfo = SPENDING_CATEGORIES.find(c => c.id === catId);
-    earningRatesArr.push({ rate: info.rate, unit: info.unit === 'percent' ? '%' : info.unit === 'points' ? 'x pts' : 'x mi', category: catInfo ? catInfo.name : catId });
+    earningRatesArr.push({ rate: effectiveRate, unit: info.unit === 'percent' ? '%' : info.unit === 'points' ? 'x pts' : 'x mi', category: catInfo ? catInfo.name : catId });
   }
 
-  // Sort earning rates by normalized rate descending, remove duplicates of "general"
+  // Sort earning rates by normalized rate descending
   earningRatesArr.sort((a, b) => {
     const aVal = categoryMap[Object.keys(config.rates).find(k => {
       const catInfo = SPENDING_CATEGORIES.find(c => c.id === k);
@@ -68,8 +91,8 @@ const CARDS_DB = [
     defaultSelected: true,
     rates: {
       dining:           { rate: 2, unit: 'miles' },
-      flights:          { rate: 5, unit: 'miles', portal: true, note: 'via Capital One Travel' },
-      hotels:           { rate: 10, unit: 'miles', portal: true, note: 'via Capital One Travel' },
+      flights:          { rate: 5, unit: 'miles', baseRate: 2, portal: true, note: '5x via Capital One Travel' },
+      hotels:           { rate: 10, unit: 'miles', baseRate: 2, portal: true, note: '10x via Capital One Travel' },
       groceries:        { rate: 2, unit: 'miles' },
       gas:              { rate: 2, unit: 'miles' },
       streaming:        { rate: 2, unit: 'miles' },
@@ -105,8 +128,8 @@ const CARDS_DB = [
     defaultSelected: true,
     rates: {
       dining:           { rate: 3, unit: 'points' },
-      flights:          { rate: 5, unit: 'points', portal: true, note: 'via Chase Travel' },
-      hotels:           { rate: 5, unit: 'points', portal: true, note: 'via Chase Travel' },
+      flights:          { rate: 5, unit: 'points', baseRate: 2, portal: true, note: '5x via Chase Travel' },
+      hotels:           { rate: 5, unit: 'points', baseRate: 2, portal: true, note: '5x via Chase Travel' },
       groceries:        { rate: 3, unit: 'points', note: 'Online grocery; excl. Target, Walmart' },
       gas:              { rate: 1, unit: 'points' },
       streaming:        { rate: 3, unit: 'points' },
@@ -144,7 +167,7 @@ const CARDS_DB = [
     rates: {
       dining:           { rate: 1, unit: 'points' },
       flights:          { rate: 5, unit: 'points', note: 'Direct with airline or Amex Travel' },
-      hotels:           { rate: 5, unit: 'points', portal: true, note: 'Prepaid via Amex Travel' },
+      hotels:           { rate: 5, unit: 'points', baseRate: 1, portal: true, note: '5x prepaid via Amex Travel' },
       groceries:        { rate: 1, unit: 'points' },
       gas:              { rate: 1, unit: 'points' },
       streaming:        { rate: 1, unit: 'points' },
@@ -154,6 +177,7 @@ const CARDS_DB = [
       general:          { rate: 1, unit: 'points' }
     },
     perks: [
+      { id: 'ap-saks', name: '$100 Saks Fifth Avenue Credit', value: 100, frequency: 'semiannual', description: '$50 Jan-Jun + $50 Jul-Dec at Saks Fifth Avenue' },
       { id: 'ap-airline', name: '$200 Airline Fee Credit', value: 200, frequency: 'annual', description: 'Incidentals on one selected airline (calendar year)' },
       { id: 'ap-hotel', name: '$200 Hotel Credit (FHR/THC)', value: 200, frequency: 'annual', description: 'Fine Hotels + Resorts or The Hotel Collection bookings' },
       { id: 'ap-entertainment', name: '$240 Digital Entertainment Credit', value: 240, frequency: 'monthly', monthlyValue: 20, description: '$20/mo — Disney+, Hulu, ESPN+, Peacock, Audible, SiriusXM, NYT' },
@@ -186,8 +210,8 @@ const CARDS_DB = [
     defaultSelected: true,
     rates: {
       dining:           { rate: 3, unit: 'percent' },
-      flights:          { rate: 5, unit: 'percent', portal: true, note: 'via Chase Travel' },
-      hotels:           { rate: 5, unit: 'percent', portal: true, note: 'via Chase Travel' },
+      flights:          { rate: 5, unit: 'percent', baseRate: 1.5, portal: true, note: '5% via Chase Travel' },
+      hotels:           { rate: 5, unit: 'percent', baseRate: 1.5, portal: true, note: '5% via Chase Travel' },
       groceries:        { rate: 1.5, unit: 'percent' },
       gas:              { rate: 1.5, unit: 'percent' },
       streaming:        { rate: 1.5, unit: 'percent' },
@@ -217,8 +241,8 @@ const CARDS_DB = [
     defaultSelected: false,
     rates: {
       dining:           { rate: 3, unit: 'percent' },
-      flights:          { rate: 5, unit: 'percent', portal: true, note: 'via Chase Travel' },
-      hotels:           { rate: 5, unit: 'percent', portal: true, note: 'via Chase Travel' },
+      flights:          { rate: 5, unit: 'percent', baseRate: 1, portal: true, note: '5% via Chase Travel' },
+      hotels:           { rate: 5, unit: 'percent', baseRate: 1, portal: true, note: '5% via Chase Travel' },
       groceries:        { rate: 1, unit: 'percent' },
       gas:              { rate: 1, unit: 'percent' },
       streaming:        { rate: 1, unit: 'percent' },
@@ -346,7 +370,7 @@ const CARDS_DB = [
     defaultSelected: false,
     rates: {
       dining: { rate: 3, unit: 'percent' }, flights: { rate: 1, unit: 'percent' },
-      hotels: { rate: 5, unit: 'percent', portal: true, note: 'via Capital One Travel' },
+      hotels: { rate: 5, unit: 'percent', baseRate: 1, portal: true, note: '5% via Capital One Travel' },
       groceries: { rate: 3, unit: 'percent' }, gas: { rate: 1, unit: 'percent' },
       streaming: { rate: 3, unit: 'percent' }, online_shopping: { rate: 1, unit: 'percent' },
       transit: { rate: 1, unit: 'percent' }, drugstore: { rate: 1, unit: 'percent' },

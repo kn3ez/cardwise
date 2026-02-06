@@ -499,7 +499,7 @@ ul { list-style: none; }
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
-  margin-top: 40px;
+  margin-bottom: 32px;
 }
 
 .stat-card {
@@ -1357,4 +1357,71 @@ ul { list-style: none; }
   border-top: 1px solid var(--border);
   background: var(--bg);
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* ==========================================
+   ADVISOR PORTAL TIP
+   ========================================== */
+.result-portal {
+  font-size: 0.8rem;
+  color: var(--accent);
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: var(--accent-light);
+  border-radius: var(--radius-sm);
+  display: inline-block;
+}
+
+/* ==========================================
+   PERIOD CHECKBOXES (Benefits)
+   ========================================== */
+.perk-periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  margin-bottom: 6px;
+}
+
+.period-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 0.75rem;
+}
+
+.period-check:hover {
+  border-color: var(--accent);
+}
+
+.period-check.checked {
+  background: var(--success-light);
+  border-color: var(--success);
+}
+
+.period-check input {
+  display: none;
+}
+
+.period-label {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.period-check.checked .period-label {
+  color: var(--success);
+}
+
+/* Add checkmark to checked periods */
+.period-check.checked::before {
+  content: '✓';
+  font-size: 0.7rem;
+  color: var(--success);
+  font-weight: 700;
 }

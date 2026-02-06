@@ -256,7 +256,7 @@
           card,
           rate: catData ? catData.rate : 0,
           label: catData ? catData.label : '1x',
-          portal: catData ? catData.portal : false,
+          portal: catData ? catData.portal : null, // portal is now an object or null
           note: catData ? catData.note : ''
         };
       })
@@ -265,11 +265,15 @@
     const winner = ranked[0];
     const runner = ranked.length > 1 && ranked[1].rate > 0 ? ranked[1] : null;
 
+    // Build note HTML - show regular note, or portal bonus if available
     let noteHtml = '';
-    if (winner.portal && winner.note) {
-      noteHtml = `<div class="result-note">⚠️ ${winner.note}</div>`;
-    } else if (winner.note) {
+    if (winner.note) {
       noteHtml = `<div class="result-note">${winner.note}</div>`;
+    }
+    // Show portal bonus as separate tip
+    let portalHtml = '';
+    if (winner.portal) {
+      portalHtml = `<div class="result-portal">💡 ${winner.portal.label} ${winner.portal.note}</div>`;
     }
 
     let runnerHtml = '';
@@ -290,6 +294,7 @@
             <div class="result-label">Best Card</div>
             <div class="result-card-name">${winner.card.issuer} ${winner.card.name}</div>
             ${noteHtml}
+            ${portalHtml}
           </div>
           <div class="result-rate">${winner.label}</div>
         </div>
@@ -536,10 +541,70 @@
   // ==========================================
   //  Benefits Page
   // ==========================================
+  
+  // Get number of periods for a frequency type
+  function getPeriodsForFrequency(freq) {
+    switch (freq) {
+      case 'monthly': return 12;
+      case 'quarterly': return 4;
+      case 'semiannual': return 2;
+      case 'annual': return 1;
+      default: return 0;
+    }
+  }
+
+  // Get period labels
+  function getPeriodLabels(freq) {
+    switch (freq) {
+      case 'monthly': return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      case 'quarterly': return ['Q1', 'Q2', 'Q3', 'Q4'];
+      case 'semiannual': return ['H1', 'H2'];
+      case 'annual': return ['Year'];
+      default: return [];
+    }
+  }
+
+  // Check if a specific period is used
+  function isPeriodUsed(perkId, period) {
+    const perkState = state.perksUsed[perkId];
+    if (!perkState) return false;
+    if (typeof perkState === 'boolean') return perkState; // Legacy single checkbox
+    return perkState[period] === true;
+  }
+
+  // Toggle a specific period
+  function togglePerkPeriod(perkId, period, totalPeriods) {
+    if (!state.perksUsed[perkId] || typeof state.perksUsed[perkId] === 'boolean') {
+      // Initialize as object
+      state.perksUsed[perkId] = {};
+    }
+    state.perksUsed[perkId][period] = !state.perksUsed[perkId][period];
+    saveState();
+    renderBenefits();
+    renderDashboard();
+  }
+
+  // Count used periods for a perk
+  function countUsedPeriods(perkId, totalPeriods) {
+    const perkState = state.perksUsed[perkId];
+    if (!perkState) return 0;
+    if (typeof perkState === 'boolean') return perkState ? totalPeriods : 0;
+    return Object.values(perkState).filter(v => v === true).length;
+  }
+
+  // Calculate used value considering periods
+  function calculateUsedValue(perk) {
+    const periods = getPeriodsForFrequency(perk.frequency);
+    if (periods === 0) return 0;
+    const usedPeriods = countUsedPeriods(perk.id, periods);
+    const valuePerPeriod = perk.value / periods;
+    return usedPeriods * valuePerPeriod;
+  }
+
   function renderBenefits() {
     const walletCards = getWalletCards();
 
-    // Overview
+    // Overview - calculate with period-aware values
     let totalFees = 0;
     let totalValue = 0;
     let usedValue = 0;
@@ -549,7 +614,7 @@
       card.perks.forEach(perk => {
         if (perk.value > 0) {
           totalValue += perk.value;
-          if (state.perksUsed[perk.id]) usedValue += perk.value;
+          usedValue += calculateUsedValue(perk);
         }
       });
     });
@@ -562,7 +627,7 @@
       </div>
       <div class="overview-card">
         <div class="overview-label">Already Used</div>
-        <div class="overview-value">$${usedValue.toLocaleString()}</div>
+        <div class="overview-value">$${Math.round(usedValue).toLocaleString()}</div>
         <div class="overview-detail">${Math.round((usedValue / totalValue || 0) * 100)}% claimed</div>
       </div>
       <div class="overview-card">
@@ -585,9 +650,8 @@
 
     container.innerHTML = walletCards.map(card => {
       const isExpanded = state.expanded[card.id];
-      const trackable = card.perks.filter(p => p.value > 0 && p.frequency !== 'ongoing');
-      const usedCount = trackable.filter(p => state.perksUsed[p.id]).length;
       const totalVal = card.perks.reduce((s, p) => s + p.value, 0);
+      const usedVal = card.perks.reduce((s, p) => s + calculateUsedValue(p), 0);
 
       return `
         <div class="benefit-section ${isExpanded ? 'expanded' : ''}" data-card-id="${card.id}">
@@ -599,38 +663,66 @@
             </div>
             <div class="benefit-progress">
               <div class="benefit-progress-value">$${totalVal.toLocaleString()}</div>
-              <div class="benefit-progress-label">${trackable.length > 0 ? `${usedCount}/${trackable.length} used` : 'Ongoing'}</div>
+              <div class="benefit-progress-label">$${Math.round(usedVal)} used</div>
             </div>
             <span class="benefit-chevron">▾</span>
           </div>
           <div class="benefit-perks">
-            ${card.perks.map(perk => {
-              const isUsed = state.perksUsed[perk.id];
-              const isTrackable = perk.value > 0 && perk.frequency !== 'ongoing';
-              return `
-                <div class="perk-item ${isUsed ? 'used' : ''}">
-                  ${isTrackable 
-                    ? `<input type="checkbox" class="perk-checkbox" ${isUsed ? 'checked' : ''} onchange="CardWise.togglePerk('${perk.id}')">` 
-                    : '<div style="width: 20px;"></div>'
-                  }
-                  <div class="perk-info">
-                    <div class="perk-name">${perk.name}</div>
-                    <div class="perk-desc">${perk.description}</div>
-                    <div class="perk-tags">
-                      ${perk.value > 0 ? `<span class="perk-tag value">$${perk.value}</span>` : ''}
-                      <span class="perk-tag frequency">${formatFreq(perk.frequency)}</span>
-                      ${perk.monthlyValue ? `<span class="perk-tag">$${perk.monthlyValue}/mo</span>` : ''}
-                    </div>
-                  </div>
-                </div>`;
-            }).join('')}
+            ${card.perks.map(perk => renderPerkItem(perk)).join('')}
           </div>
         </div>`;
     }).join('');
   }
 
+  function renderPerkItem(perk) {
+    const periods = getPeriodsForFrequency(perk.frequency);
+    const labels = getPeriodLabels(perk.frequency);
+    const isTrackable = perk.value > 0 && periods > 0;
+    const usedPeriods = countUsedPeriods(perk.id, periods);
+    const allUsed = isTrackable && usedPeriods === periods;
+
+    // For perks with multiple periods, show period checkboxes
+    let checkboxesHtml = '';
+    if (isTrackable && periods > 1) {
+      checkboxesHtml = `
+        <div class="perk-periods">
+          ${labels.map((label, i) => {
+            const isUsed = isPeriodUsed(perk.id, i);
+            return `
+              <label class="period-check ${isUsed ? 'checked' : ''}">
+                <input type="checkbox" ${isUsed ? 'checked' : ''} 
+                       onchange="CardWise.togglePerkPeriod('${perk.id}', ${i}, ${periods})">
+                <span class="period-label">${label}</span>
+              </label>`;
+          }).join('')}
+        </div>`;
+    } else if (isTrackable) {
+      // Single checkbox for annual
+      const isUsed = isPeriodUsed(perk.id, 0);
+      checkboxesHtml = `
+        <input type="checkbox" class="perk-checkbox" ${isUsed ? 'checked' : ''} 
+               onchange="CardWise.togglePerkPeriod('${perk.id}', 0, 1)">`;
+    }
+
+    return `
+      <div class="perk-item ${allUsed ? 'used' : ''}">
+        ${!isTrackable || periods > 1 ? '<div style="width: 20px;"></div>' : checkboxesHtml}
+        <div class="perk-info">
+          <div class="perk-name">${perk.name}</div>
+          <div class="perk-desc">${perk.description}</div>
+          ${isTrackable && periods > 1 ? checkboxesHtml : ''}
+          <div class="perk-tags">
+            ${perk.value > 0 ? `<span class="perk-tag value">$${perk.value}/yr</span>` : ''}
+            <span class="perk-tag frequency">${formatFreq(perk.frequency)}</span>
+            ${perk.monthlyValue ? `<span class="perk-tag">$${perk.monthlyValue}/mo</span>` : ''}
+            ${isTrackable && periods > 1 ? `<span class="perk-tag">${usedPeriods}/${periods} used</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+  }
+
   function formatFreq(freq) {
-    return { annual: 'Annual', monthly: 'Monthly', quarterly: 'Quarterly', ongoing: 'Ongoing', 'one-time': 'One-time' }[freq] || freq;
+    return { annual: 'Annual', monthly: 'Monthly', quarterly: 'Quarterly', semiannual: 'Semi-annual', ongoing: 'Ongoing', 'one-time': 'One-time' }[freq] || freq;
   }
 
   // ==========================================
@@ -939,6 +1031,7 @@
     addToWallet,
     removeFromWallet,
     togglePerk,
+    togglePerkPeriod,
     toggleExpand,
     navigate: navigateTo,
     editAnniversary,
