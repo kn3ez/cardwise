@@ -543,7 +543,26 @@ ul { list-style: none; }
 }
 
 @media (max-width: 500px) {
-  .dashboard-cards { grid-template-columns: 1fr; }
+  .dashboard-cards { 
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .stat-card {
+    padding: 14px;
+  }
+  .stat-icon {
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+  }
+  .stat-value {
+    font-size: 1.25rem;
+  }
+  .stat-label {
+    font-size: 0.65rem;
+  }
+  .stat-detail {
+    font-size: 0.7rem;
+  }
 }
 
 /* ==========================================
