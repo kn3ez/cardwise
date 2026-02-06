@@ -3,247 +3,200 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CardWise — Credit Card Benefits Optimizer</title>
-  <meta name="description" content="Maximize credit card rewards. Track perks, optimize spending, and never miss a benefit expiration.">
-  <meta name="theme-color" content="#0f172a">
-
-  <!-- Favicon -->
+  <title>CardWise</title>
+  <meta name="description" content="Know which card to use. Track your perks.">
+  <meta name="theme-color" content="#ffffff">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💳</text></svg>">
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-  <!-- Styles -->
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-
-  <!-- Grid Background -->
-  <div class="grid-bg" aria-hidden="true"></div>
-  <div class="grid-glow" aria-hidden="true"></div>
-
-  <!-- App Container -->
-  <div class="app-container">
-
-    <!-- Header -->
-    <header class="app-header">
-      <div class="brand">
-        <div class="brand-icon">💳</div>
-        <h1>CardWise</h1>
+  <div class="app">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon">◈</span>
+        <span class="brand-text">CardWise</span>
       </div>
-      <nav>
-        <ul class="nav-links">
-          <li><a href="#advisor" class="active" data-section="advisor">Advisor</a></li>
-          <li><a href="#dashboard" data-section="dashboard">Dashboard</a></li>
-          <li><a href="#wallet" data-section="wallet">Wallet</a></li>
-          <li><a href="#optimizer" data-section="optimizer">Optimizer</a></li>
-          <li><a href="#benefits" data-section="benefits">Benefits</a></li>
-          <li><a href="#browser" data-section="browser">Cards</a></li>
-          <li><a href="#calendar" data-section="calendar">Calendar</a></li>
-        </ul>
+      
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-page="advisor">
+          <span class="nav-icon">⚡</span>
+          <span>Advisor</span>
+        </a>
+        <a href="#" class="nav-item" data-page="cards">
+          <span class="nav-icon">💳</span>
+          <span>My Cards</span>
+        </a>
+        <a href="#" class="nav-item" data-page="benefits">
+          <span class="nav-icon">🎁</span>
+          <span>Benefits</span>
+        </a>
+        <a href="#" class="nav-item" data-page="optimizer">
+          <span class="nav-icon">📊</span>
+          <span>Optimizer</span>
+        </a>
+        <a href="#" class="nav-item" data-page="calendar">
+          <span class="nav-icon">📅</span>
+          <span>Calendar</span>
+        </a>
       </nav>
-    </header>
 
-    <!-- ============================== -->
-    <!-- HERO: What Card Should I Use?  -->
-    <!-- ============================== -->
-    <section id="advisor" class="section fade-in">
-      <div class="advisor-hero">
-        <div class="advisor-header">
-          <h2 class="advisor-title">What card should I use?</h2>
-          <p class="advisor-subtitle">Tap a category or search a merchant — get an instant answer.</p>
-        </div>
-
-        <div class="advisor-search-wrap">
-          <span class="advisor-search-icon">🔍</span>
-          <input type="text" class="advisor-search-input" id="advisorSearchInput" placeholder="Type a merchant… Starbucks, Amazon, Delta…" autocomplete="off">
-        </div>
-
-        <div class="advisor-categories" id="advisorCategories">
-          <!-- Quick category buttons injected by JS -->
-        </div>
-
-        <div class="advisor-result" id="advisorResult">
-          <!-- Result injected by JS -->
+      <div class="sidebar-footer">
+        <div class="wallet-summary" id="sidebarSummary">
+          <div class="summary-label">Wallet</div>
+          <div class="summary-value">0 cards</div>
         </div>
       </div>
-    </section>
+    </aside>
 
-    <!-- Dashboard Section -->
-    <section id="dashboard" class="section fade-in">
-      <div class="section-header">
-        <div>
-          <h2 class="section-title"><span class="icon">📊</span> Dashboard</h2>
-          <p class="section-subtitle">Your credit card portfolio at a glance</p>
+    <!-- Main Content -->
+    <main class="main">
+      <!-- Page: Advisor -->
+      <div class="page active" id="page-advisor">
+        <div class="page-header">
+          <h1>What card should I use?</h1>
+          <p class="page-subtitle">Type a merchant or pick a category</p>
         </div>
-      </div>
 
-      <div class="dashboard-grid" id="dashboardGrid">
-        <div class="stat-card">
-          <div class="stat-icon">💰</div>
-          <div class="stat-label">Total Annual Fees</div>
-          <div class="stat-value" id="totalFees">$0</div>
-          <div class="stat-detail" id="totalFeesDetail">0 cards in wallet</div>
+        <div class="advisor-container">
+          <div class="search-box">
+            <input type="text" id="advisorSearch" placeholder="Starbucks, Amazon, groceries..." autocomplete="off">
+            <span class="search-shortcut">⌘K</span>
+          </div>
+
+          <div class="category-chips" id="categoryChips">
+            <!-- Rendered by JS -->
+          </div>
+
+          <div class="advisor-result" id="advisorResult">
+            <!-- Rendered by JS -->
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon">✨</div>
-          <div class="stat-label">Total Perk Value</div>
-          <div class="stat-value emerald" id="totalPerkValue">$0</div>
-          <div class="stat-detail" id="totalPerkDetail">0 perks tracked</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">📈</div>
-          <div class="stat-label">Net Value</div>
-          <div class="stat-value positive" id="netValue">$0</div>
-          <div class="stat-detail">Perks minus fees</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">⚡</div>
-          <div class="stat-label">Unused Perks</div>
-          <div class="stat-value" id="unusedPerks">0</div>
-          <div class="stat-detail" id="unusedPerksDetail">Worth $0 unclaimed</div>
+
+        <div class="dashboard-cards" id="dashboardCards">
+          <!-- Rendered by JS -->
         </div>
       </div>
 
-      <div class="alerts-container" id="alertsContainer">
-        <!-- Alerts injected by JS -->
-      </div>
-    </section>
+      <!-- Page: My Cards -->
+      <div class="page" id="page-cards">
+        <div class="page-header">
+          <h1>My Cards</h1>
+          <p class="page-subtitle">Manage your wallet</p>
+        </div>
 
-    <!-- My Wallet Section -->
-    <section id="wallet" class="section fade-in">
-      <div class="section-header">
-        <div>
-          <h2 class="section-title"><span class="icon">👛</span> My Wallet</h2>
-          <p class="section-subtitle">Your cards — tap to see details, hover to remove</p>
+        <div class="cards-layout">
+          <div class="section">
+            <div class="section-header">
+              <h2>Your Wallet</h2>
+              <span class="badge" id="walletCount">0</span>
+            </div>
+            <div class="wallet-grid" id="walletGrid">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-header">
+              <h2>Add Cards</h2>
+              <div class="filter-pills" id="issuerFilters">
+                <button class="pill active" data-filter="all">All</button>
+                <button class="pill" data-filter="Chase">Chase</button>
+                <button class="pill" data-filter="American Express">Amex</button>
+                <button class="pill" data-filter="Capital One">Cap One</button>
+                <button class="pill" data-filter="Citi">Citi</button>
+                <button class="pill" data-filter="no-fee">No Fee</button>
+              </div>
+            </div>
+            <div class="search-box small">
+              <input type="text" id="cardSearch" placeholder="Search cards..." autocomplete="off">
+            </div>
+            <div class="card-list" id="cardList">
+              <!-- Rendered by JS -->
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="wallet-scroll" id="walletScroll">
-        <!-- Cards injected by JS -->
-      </div>
-    </section>
+      <!-- Page: Benefits -->
+      <div class="page" id="page-benefits">
+        <div class="page-header">
+          <h1>Benefits Tracker</h1>
+          <p class="page-subtitle">Don't leave money on the table</p>
+          <div class="page-actions">
+            <button class="btn btn-ghost" id="expandAllBtn">Expand All</button>
+            <button class="btn btn-ghost" id="resetPerksBtn">Reset</button>
+          </div>
+        </div>
 
-    <!-- Spending Optimizer Section -->
-    <section id="optimizer" class="section fade-in">
-      <div class="section-header">
-        <div>
-          <h2 class="section-title"><span class="icon">🎯</span> Spending Optimizer</h2>
-          <p class="section-subtitle">The best card for every category</p>
+        <div class="benefits-overview" id="benefitsOverview">
+          <!-- Rendered by JS -->
+        </div>
+
+        <div class="benefits-list" id="benefitsList">
+          <!-- Rendered by JS -->
         </div>
       </div>
 
-      <div class="optimizer-search">
-        <div class="search-input-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" class="search-input" id="optimizerSearch" placeholder="Search a category or merchant...">
+      <!-- Page: Optimizer -->
+      <div class="page" id="page-optimizer">
+        <div class="page-header">
+          <h1>Spending Optimizer</h1>
+          <p class="page-subtitle">Best card for every category</p>
+        </div>
+
+        <div class="optimizer-grid" id="optimizerGrid">
+          <!-- Rendered by JS -->
         </div>
       </div>
 
-      <div class="optimizer-grid" id="optimizerGrid">
-        <!-- Category cards injected by JS -->
-      </div>
-    </section>
-
-    <!-- Benefits Tracker Section -->
-    <section id="benefits" class="section fade-in">
-      <div class="section-header">
-        <div>
-          <h2 class="section-title"><span class="icon">🎁</span> Benefits Tracker</h2>
-          <p class="section-subtitle">Track and use every perk — don't leave money on the table</p>
+      <!-- Page: Calendar -->
+      <div class="page" id="page-calendar">
+        <div class="page-header">
+          <h1>Calendar Export</h1>
+          <p class="page-subtitle">Never miss a perk deadline</p>
         </div>
-        <div class="benefits-actions">
-          <button class="btn btn-secondary btn-sm" id="expandAllBtn">Expand All</button>
-          <button class="btn btn-secondary btn-sm" id="resetPerksBtn">Reset All</button>
-        </div>
-      </div>
 
-      <div class="benefits-list" id="benefitsList">
-        <!-- Benefit sections injected by JS -->
-      </div>
-    </section>
+        <div class="calendar-container">
+          <div class="calendar-info">
+            <p>Download reminders for all your perk expirations. Get alerts <strong>1 week before</strong> and <strong>the day of</strong> each deadline.</p>
+            <button class="btn btn-primary" id="downloadIcsBtn">
+              <span>📅</span> Download .ics
+            </button>
+          </div>
 
-    <!-- Card Browser Section -->
-    <section id="browser" class="section fade-in">
-      <div class="section-header">
-        <div>
-          <h2 class="section-title"><span class="icon">🔎</span> Browse Cards</h2>
-          <p class="section-subtitle">Search and add cards to your wallet</p>
+          <div class="upcoming-events" id="upcomingEvents">
+            <!-- Rendered by JS -->
+          </div>
         </div>
       </div>
-
-      <!-- Searchable Card Selector -->
-      <div class="card-selector-wrap">
-        <div class="card-selector-input-wrap">
-          <span class="card-selector-icon">🔍</span>
-          <input type="text" class="card-selector-input" id="cardSelectorInput" placeholder="Search cards by name or issuer..." autocomplete="off">
-        </div>
-        <div class="card-selector-dropdown" id="cardSelectorDropdown">
-          <!-- Dropdown items injected by JS -->
-        </div>
-      </div>
-
-      <!-- Issuer Filter Chips -->
-      <div class="browser-filters" id="browserFilters">
-        <button class="filter-btn active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="Chase">Chase</button>
-        <button class="filter-btn" data-filter="American Express">Amex</button>
-        <button class="filter-btn" data-filter="Capital One">Cap One</button>
-        <button class="filter-btn" data-filter="Citi">Citi</button>
-        <button class="filter-btn" data-filter="U.S. Bank">US Bank</button>
-        <button class="filter-btn" data-filter="Wells Fargo">Wells Fargo</button>
-        <button class="filter-btn" data-filter="Discover">Discover</button>
-        <button class="filter-btn" data-filter="no-fee">No Fee</button>
-      </div>
-
-      <!-- Wallet Tags -->
-      <div class="wallet-tags-section" id="walletTagsSection">
-        <div class="wallet-tags-label">Your wallet:</div>
-        <div class="wallet-tags" id="walletTags">
-          <!-- Tags injected by JS -->
-        </div>
-      </div>
-    </section>
-
-    <!-- Calendar Export Section -->
-    <section id="calendar" class="section fade-in">
-      <div class="section-header" style="justify-content: center;">
-        <div style="text-align: center;">
-          <h2 class="section-title" style="justify-content: center;"><span class="icon">📅</span> Calendar Export</h2>
-          <p class="section-subtitle">Never miss a perk expiration</p>
-        </div>
-      </div>
-
-      <div class="calendar-section">
-        <p class="calendar-info">
-          Download an <strong>.ics calendar file</strong> with reminders for all your perk expirations.
-          You'll get alerts <strong>1 week before</strong> and <strong>the day of</strong> each deadline.
-        </p>
-        <button class="btn btn-primary" id="downloadCalendarBtn" style="font-size: 1rem; padding: 14px 32px;">
-          📅 Download .ics Calendar
-        </button>
-
-        <div class="calendar-preview" id="calendarPreview">
-          <!-- Preview events injected by JS -->
-        </div>
-      </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="app-footer">
-      <p>Built by <a href="https://kn3ez.github.io/neez.me/" target="_blank" rel="noopener">Neez</a> · CardWise © 2026</p>
-    </footer>
-
+    </main>
   </div>
+
+  <!-- Mobile Nav -->
+  <nav class="mobile-nav">
+    <a href="#" class="mobile-nav-item active" data-page="advisor">
+      <span>⚡</span>
+      <span>Advisor</span>
+    </a>
+    <a href="#" class="mobile-nav-item" data-page="cards">
+      <span>💳</span>
+      <span>Cards</span>
+    </a>
+    <a href="#" class="mobile-nav-item" data-page="benefits">
+      <span>🎁</span>
+      <span>Benefits</span>
+    </a>
+    <a href="#" class="mobile-nav-item" data-page="optimizer">
+      <span>📊</span>
+      <span>Optimizer</span>
+    </a>
+  </nav>
 
   <!-- Toast Container -->
   <div class="toast-container" id="toastContainer"></div>
 
-  <!-- Scripts -->
   <script src="js/cards.js"></script>
   <script src="js/app.js"></script>
-
 </body>
 </html>
